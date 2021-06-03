@@ -25,8 +25,9 @@ import png
 
 import constants
 
-img_rows = 28
-img_columns = 28
+img_rows = 32
+img_columns = 32
+img_colors = 3
 
 TOP_SIDE = 0
 BOTTOM_SIDE = 1
@@ -36,7 +37,7 @@ VERTICAL_BARS = 4
 HORIZONTAL_BARS = 5
 
 truly_training_percentage = 0.80
-epochs = 30
+epochs = 300
 batch_size = 100
 
 def print_error(*s):
@@ -105,15 +106,15 @@ def add_noise(data, experiment, occlusion = 0, bars_type = None):
 def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
 
    # Load MNIST data, as part of TensorFlow.
-    mnist = tf.keras.datasets.mnist
-    (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+    cifar = tf.keras.datasets.cifar10
+    (train_images, train_labels), (test_images, test_labels) = cifar.load_data()
 
     all_data = np.concatenate((train_images, test_images), axis=0)
     all_labels = np.concatenate((train_labels, test_labels), axis= 0)
 
     all_data = add_noise(all_data, experiment, occlusion, bars_type)
 
-    all_data = all_data.reshape((70000, img_columns, img_rows, 1))
+    all_data = all_data.reshape((len(all_data), img_columns, img_rows, img_colors))
     all_data = all_data.astype('float32') / 255
 
 
@@ -128,13 +129,13 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
 def get_encoder(input_img):
 
     # Convolutional Encoder
-    conv_1 = Conv2D(32,kernel_size=3, activation='relu', padding='same',
-        input_shape=(img_columns, img_rows, 1))(input_img)
+    conv_1 = Conv2D(constants.domain // 2,kernel_size=3, activation='relu', padding='same',
+        input_shape=(img_columns, img_rows, img_colors))(input_img)
     pool_1 = MaxPooling2D((2, 2))(conv_1)
-    conv_2 = Conv2D(32,kernel_size=3, activation='relu')(pool_1)
+    conv_2 = Conv2D(constants.domain // 2,kernel_size=3, activation='relu')(pool_1)
     pool_2 = MaxPooling2D((2, 2))(conv_2)
     drop_1 = Dropout(0.4)(pool_2)
-    conv_3 = Conv2D(64, kernel_size=5, activation='relu')(drop_1)
+    conv_3 = Conv2D(constants.domain, kernel_size=5, activation='relu')(drop_1)
     pool_3 = MaxPooling2D((2, 2))(conv_3)
     drop_2 = Dropout(0.4)(pool_3)
     norm = LayerNormalization()(drop_2)
@@ -146,12 +147,12 @@ def get_encoder(input_img):
 
 
 def get_decoder(encoded):
-    dense = Dense(units=7*7*32, activation='relu', input_shape=(64, ))(encoded)
-    reshape = Reshape((7, 7, 32))(dense)
-    trans_1 = Conv2DTranspose(64, kernel_size=3, strides=2,
+    dense = Dense(units=7*7*constants.domain//2, activation='relu', input_shape=(64, ))(encoded)
+    reshape = Reshape((7, 7, constants.domain//2))(dense)
+    trans_1 = Conv2DTranspose(constants.domain, kernel_size=3, strides=2,
         padding='same', activation='relu')(reshape)
     drop_1 = Dropout(0.4)(trans_1)
-    trans_2 = Conv2DTranspose(32, kernel_size=3, strides=2,
+    trans_2 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_1)
     drop_2 = Dropout(0.4)(trans_2)
     output_img = Conv2D(1, kernel_size=3, strides=1,
