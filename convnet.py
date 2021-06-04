@@ -17,7 +17,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Dropout, Flatten, Dense, \
+from tensorflow.keras.layers import Input, Conv2D, AveragePooling2D, Dropout, Flatten, Dense, \
     LayerNormalization, Reshape, Conv2DTranspose
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.regularizers import l2
@@ -127,18 +127,18 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     return (all_data, all_labels)
 
 
-def vgg_block(parameters, input_layer, first = False):
+def vgg_block(parameters, input_layer, dropout=0.4, first = False):
     conv_1 = None
     if first:
         conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
-            padding='same', kernel_regularizer=l2(0.001), input_shape=(img_columns, img_rows, img_colors))(input_layer)
+            padding='same', input_shape=(img_columns, img_rows, img_colors))(input_layer)
     else:
         conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
-            padding='same', kernel_regularizer=l2(0.001))(input_layer)
+            padding='same')(input_layer)
     conv_2 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
-        padding='same', kernel_regularizer=l2(0.001))(conv_1)
-    pool_1 = MaxPooling2D((2, 2))(conv_2)
-    drop_1 = Dropout(0.4)(pool_1)
+        padding='same')(conv_1)
+    pool_1 = AveragePooling2D((2, 2))(conv_2)
+    drop_1 = Dropout(dropout)(pool_1)
     return drop_1
 
 
@@ -159,8 +159,8 @@ def get_encoder(input_img):
 def get_decoder(encoded):
     ini_rows = img_rows//16
     ini_cols = img_columns//16
-    # dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu', input_shape=(64, ))(encoded)
-    reshape = Reshape((1, 1, constants.domain))(encoded)
+    dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu', input_shape=(64, ))(encoded)
+    reshape = Reshape((1, 1, constants.domain))(dense)
     trans_1 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
         padding='same', activation='relu')(reshape)
     drop_1 = Dropout(0.4)(trans_1)
