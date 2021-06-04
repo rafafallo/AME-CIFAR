@@ -20,6 +20,7 @@ from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Dropout, Flatten, Dense, \
     LayerNormalization, Reshape, Conv2DTranspose
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.regularizers import l2
 from joblib import Parallel, delayed
 import png
 
@@ -37,7 +38,7 @@ VERTICAL_BARS = 4
 HORIZONTAL_BARS = 5
 
 truly_training_percentage = 0.80
-epochs = 300
+epochs = 100
 batch_size = 100
 
 def print_error(*s):
@@ -126,44 +127,64 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     return (all_data, all_labels)
 
 
+def vgg_block(parameters, input_layer, first = False):
+    conv_1 = None
+    if first:
+        conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
+            padding='same', kernel_regularizer=l2(0.001), input_shape=(img_columns, img_rows, img_colors))(input_layer)
+    else:
+        conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
+            padding='same', kernel_regularizer=l2(0.001))(input_layer)
+    conv_2 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
+        padding='same', kernel_regularizer=l2(0.001))(conv_1)
+    pool_1 = MaxPooling2D((2, 2))(conv_2)
+    drop_1 = Dropout(0.4)(pool_1)
+    return drop_1
+
+
 def get_encoder(input_img):
+    domain = constants.domain
+    vgg_1 = vgg_block(domain//16, input_img, first = True)
+    vgg_2 = vgg_block(domain//8, vgg_1)
+    vgg_3 = vgg_block(domain//4, vgg_2)
+    vgg_4 = vgg_block(domain//2, vgg_3)
+    vgg_5 = vgg_block(domain, vgg_4)
 
-    # Convolutional Encoder
-    conv_1 = Conv2D(constants.domain // 2,kernel_size=3, activation='relu', padding='same',
-        input_shape=(img_columns, img_rows, img_colors))(input_img)
-    pool_1 = MaxPooling2D((2, 2))(conv_1)
-    conv_2 = Conv2D(constants.domain // 2,kernel_size=3, activation='relu')(pool_1)
-    pool_2 = MaxPooling2D((2, 2))(conv_2)
-    drop_1 = Dropout(0.4)(pool_2)
-    conv_3 = Conv2D(constants.domain, kernel_size=5, activation='relu')(drop_1)
-    pool_3 = MaxPooling2D((2, 2))(conv_3)
-    drop_2 = Dropout(0.4)(pool_3)
-    norm = LayerNormalization()(drop_2)
-
+    # norm = LayerNormalization()(drop_5)
     # Produces an array of size equal to constants.domain.
-    code = Flatten()(norm)
-
+    code = Flatten()(vgg_5)
     return code
 
 
 def get_decoder(encoded):
-    dense = Dense(units=7*7*constants.domain//2, activation='relu', input_shape=(64, ))(encoded)
-    reshape = Reshape((7, 7, constants.domain//2))(dense)
-    trans_1 = Conv2DTranspose(constants.domain, kernel_size=3, strides=2,
+    ini_rows = img_rows//16
+    ini_cols = img_columns//16
+    # dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu', input_shape=(64, ))(encoded)
+    reshape = Reshape((1, 1, constants.domain))(encoded)
+    trans_1 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
         padding='same', activation='relu')(reshape)
     drop_1 = Dropout(0.4)(trans_1)
-    trans_2 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
+    trans_2 = Conv2DTranspose(constants.domain//4, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_1)
     drop_2 = Dropout(0.4)(trans_2)
-    output_img = Conv2D(1, kernel_size=3, strides=1,
-        activation='sigmoid', padding='same', name='autoencoder')(drop_2)
+    trans_3 = Conv2DTranspose(constants.domain//8, kernel_size=3, strides=2,
+        padding='same', activation='relu')(drop_2)
+    drop_3 = Dropout(0.4)(trans_3)
+    trans_4 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
+        padding='same', activation='relu')(drop_3)
+    drop_4 = Dropout(0.4)(trans_4)
+    trans_5 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
+        padding='same', activation='relu')(drop_4)
+    drop_5 = Dropout(0.4)(trans_5)
+    output_img = Conv2D(img_colors, kernel_size=3, strides=1,
+        activation='sigmoid', padding='same', name='autoencoder')(drop_5)
 
     # Produces an image of same size and channels as originals.
     return output_img
 
 
 def get_classifier(encoded):
-    dense_1 = Dense(constants.domain*2, activation='relu')(encoded)
+    dense_1 = Dense(constants.domain, activation='relu')(encoded)
     drop = Dropout(0.4)(dense_1)
     classification = Dense(10, activation='softmax', name='classification')(drop)
 
@@ -208,14 +229,14 @@ def train_networks(training_percentage, filename, experiment):
         training_data = training_data[:truly_training]
         training_labels = training_labels[:truly_training]
         
-        input_img = Input(shape=(img_columns, img_rows, 1))
+        input_img = Input(shape=(img_columns, img_rows, img_colors))
         encoded = get_encoder(input_img)
         classified = get_classifier(encoded)
         decoded = get_decoder(encoded)
 
         model = Model(inputs=input_img, outputs=[classified, decoded])
 
-        model.compile(loss=['categorical_crossentropy', 'mean_squared_error'],
+        model.compile(loss=['categorical_crossentropy', 'binary_crossentropy'],
                     optimizer='adam',
                     metrics='accuracy')
 
