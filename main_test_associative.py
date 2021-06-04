@@ -40,21 +40,27 @@ def plot_pre_graph (pre_mean, rec_mean, ent_mean, pre_std, rec_std, ent_std, \
     tag = '', xlabels = constants.memory_sizes, xtitle = None, \
         ytitle = None, action=None, occlusion = None, bars_type = None, tolerance = 0):
 
-    cmap = mpl.colors.LinearSegmentedColormap.from_list('mycolors',['cyan','purple'])
-    Z = [[0,0],[0,0]]
-    step = 0.1
-    levels = np.arange(0.0, 90 + step, step)
-    CS3 = plt.contourf(Z, levels, cmap=cmap)
-
     plt.clf()
     plt.figure(figsize=(6.4,4.8))
 
-    main_step = 100.0/len(xlabels)
-    plt.errorbar(np.arange(0, 100, main_step), pre_mean, fmt='r-o', yerr=pre_std, label=_('Precision'))
-    plt.errorbar(np.arange(0, 100, main_step), rec_mean, fmt='b-s', yerr=rec_std, label=_('Recall'))
-    plt.xlim(0, 90)
-    plt.ylim(0, 102)
-    plt.xticks(np.arange(0, 100, main_step), xlabels)
+    full_length = 100.0
+    step = 0.1
+    main_step = full_length/len(xlabels)
+    x = np.arange(0, full_length, main_step)
+
+    # One main step less because levels go on sticks, not
+    # on intervals.
+    xmax = full_length - main_step + step
+
+    # Gives space to fully show markers in the top.
+    ymax = full_length + 2
+
+    plt.errorbar(x, pre_mean, fmt='r-o', yerr=pre_std, label=_('Precision'))
+    plt.errorbar(x, rec_mean, fmt='b--s', yerr=rec_std, label=_('Recall'))
+
+    plt.xlim(0, xmax)
+    plt.ylim(0, ymax)
+    plt.xticks(x, xlabels)
 
     if xtitle is None:
         xtitle = _('Range Quantization Levels')
@@ -68,24 +74,39 @@ def plot_pre_graph (pre_mean, rec_mean, ent_mean, pre_std, rec_std, ent_std, \
 
     entropy_labels = [str(e) for e in np.around(ent_mean, decimals=1)]
 
+    cmap = mpl.colors.LinearSegmentedColormap.from_list('mycolors',['cyan','purple'])
+    Z = [[0,0],[0,0]]
+    levels = np.arange(0.0, xmax, step)
+    CS3 = plt.contourf(Z, levels, cmap=cmap)
+
     cbar = plt.colorbar(CS3, orientation='horizontal')
-    cbar.set_ticks(np.arange(0, 100, main_step))
+    cbar.set_ticks(x)
     cbar.ax.set_xticklabels(entropy_labels)
     cbar.set_label(_('Entropy'))
 
     s = tag + 'graph_prse_MEAN' + _('-english')
     graph_filename = constants.picture_filename(s, action, occlusion, bars_type, tolerance)
-    plt.savefig(graph_filename, dpi=500)
+    plt.savefig(graph_filename, dpi=600)
 
 
 def plot_size_graph (response_size, size_stdev, action=None):
     plt.clf()
 
-    main_step = len(constants.memory_sizes)
-    plt.errorbar(np.arange(0, 100, main_step), response_size, fmt='g-D', yerr=size_stdev, label=_('Average number of responses'))
-    plt.xlim(0, 90)
-    plt.ylim(0, 10)
-    plt.xticks(np.arange(0, 100, 10), constants.memory_sizes)
+    full_length = 100.0
+    step = 0.1
+    main_step = full_length/len(response_size)
+    x = np.arange(0, full_length, main_step)
+
+    # One main step less because levels go on sticks, not
+    # on intervals.
+    xmax = full_length - main_step + step
+    ymax = constants.n_labels
+
+    plt.errorbar(x, response_size, fmt='g-D', yerr=size_stdev, label=_('Average number of responses'))
+    plt.xlim(0, xmax)
+    plt.ylim(0, ymax)
+    plt.xticks(x, constants.memory_sizes)
+    plt.yticks(np.arange(0,ymax+1, 1), range(constants.n_labels+1))
 
     plt.xlabel(_('Range Quantization Levels'))
     plt.ylabel(_('Size'))
@@ -93,8 +114,7 @@ def plot_size_graph (response_size, size_stdev, action=None):
     plt.grid(True)
 
     graph_filename = constants.picture_filename('graph_size_MEAN' + _('-english'), action)
-    plt.savefig(graph_filename, dpi=500)
-
+    plt.savefig(graph_filename, dpi=600)
 
 def plot_behs_graph(no_response, no_correct, no_chosen, correct, action=None):
 
@@ -106,21 +126,29 @@ def plot_behs_graph(no_response, no_correct, no_chosen, correct, action=None):
         correct[i] /= total
 
     plt.clf()
-    main_step = len(constants.memory_sizes)
-    xlocs = np.arange(0, 100, main_step)
+
+    full_length = 100.0
+    step = 0.1
+    main_step = full_length/len(constants.memory_sizes)
+    x = np.arange(0.0, full_length, main_step)
+
+    # One main step less because levels go on sticks, not
+    # on intervals.
+    xmax = full_length - main_step + step
+    ymax = full_length
     width = 5       # the width of the bars: can also be len(x) sequence
 
-    plt.bar(xlocs, correct, width, label=_('Correct response chosen'))
+    plt.bar(x, correct, width, label=_('Correct response chosen'))
     cumm = np.array(correct)
-    plt.bar(xlocs, no_chosen,  width, bottom=cumm, label=_('Correct response not chosen'))
+    plt.bar(x, no_chosen,  width, bottom=cumm, label=_('Correct response not chosen'))
     cumm += np.array(no_chosen)
-    plt.bar(xlocs, no_correct, width, bottom=cumm, label=_('No correct response'))
+    plt.bar(x, no_correct, width, bottom=cumm, label=_('No correct response'))
     cumm += np.array(no_correct)
-    plt.bar(xlocs, no_response, width, bottom=cumm, label=_('No responses'))
+    plt.bar(x, no_response, width, bottom=cumm, label=_('No responses'))
 
-    plt.xlim(-5, 95)
-    plt.ylim(0, 100)
-    plt.xticks(np.arange(0, 100, 10), constants.memory_sizes)
+    plt.xlim(-width, full_length + width)
+    plt.ylim(0.0, full_length)
+    plt.xticks(x, constants.memory_sizes)
 
     plt.xlabel(_('Range Quantization Levels'))
     plt.ylabel(_('Labels'))
@@ -129,7 +157,7 @@ def plot_behs_graph(no_response, no_correct, no_chosen, correct, action=None):
     plt.grid(axis='y')
 
     graph_filename = constants.picture_filename('graph_behaviours_MEAN' + _('-english'), action)
-    plt.savefig(graph_filename, dpi=500)
+    plt.savefig(graph_filename, dpi=600)
 
 
 def plot_features_graph(domain, means, stdevs, experiment, occlusion = None, bars_type = None):
@@ -140,14 +168,14 @@ def plot_features_graph(domain, means, stdevs, experiment, occlusion = None, bar
     ymin = np.PINF
     ymax = np.NINF
     for i in constants.all_labels:
-        n = (means[i] - stdevs[i]).min()
-        x = (means[i] + stdevs[i]).max()
-        ymin = ymin if ymin < n else n
-        ymax = ymax if ymax > x else x
+        yn = (means[i] - stdevs[i]).min()
+        yx = (means[i] + stdevs[i]).max()
+        ymin = ymin if ymin < yn else yn
+        ymax = ymax if ymax > yx else yx
 
     main_step = 100.0 / domain
     xrange = np.arange(0, 100, main_step)
-    fmts = ['r-h', 'b-*', 'g-s', 'y-x', 'm-d', 'c-h', 'r-*', 'b--s', 'g--x', 'y--d']
+    fmts = constants.label_formats
 
     for i in constants.all_labels:
         plt.clf()
