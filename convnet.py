@@ -127,7 +127,7 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     return (all_data, all_labels)
 
 
-def vgg_block(parameters, input_layer, dropout=0.4, first = False):
+def vgg_block(parameters, input_layer, dropout=0.3, first = False):
     conv_1 = None
     if first:
         conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
@@ -159,23 +159,23 @@ def get_encoder(input_img):
 def get_decoder(encoded):
     ini_rows = img_rows//16
     ini_cols = img_columns//16
-    dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu', input_shape=(64, ))(encoded)
+    dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu')(encoded)
     reshape = Reshape((ini_rows, ini_cols, constants.domain))(dense)
     trans_1 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
         padding='same', activation='relu')(reshape)
-    drop_1 = Dropout(0.4)(trans_1)
+    drop_1 = Dropout(0.3)(trans_1)
     trans_2 = Conv2DTranspose(constants.domain//4, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_1)
-    drop_2 = Dropout(0.4)(trans_2)
+    drop_2 = Dropout(0.3)(trans_2)
     trans_3 = Conv2DTranspose(constants.domain//8, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_2)
-    drop_3 = Dropout(0.4)(trans_3)
+    drop_3 = Dropout(0.3)(trans_3)
     trans_4 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_3)
-    drop_4 = Dropout(0.4)(trans_4)
+    drop_4 = Dropout(0.3)(trans_3)
     # trans_5 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
     #     padding='same', activation='relu')(drop_4)
-    # drop_5 = Dropout(0.4)(trans_5)
+    # drop_5 = Dropout(0.3)(trans_5)
     output_img = Conv2D(img_colors, kernel_size=3, strides=1,
         activation='sigmoid', padding='same', name='autoencoder')(drop_4)
 
@@ -185,7 +185,7 @@ def get_decoder(encoded):
 
 def get_classifier(encoded):
     dense_1 = Dense(constants.domain, activation='relu')(encoded)
-    drop = Dropout(0.4)(dense_1)
+    drop = Dropout(0.3)(dense_1)
     classification = Dense(10, activation='softmax', name='classification')(drop)
 
     return classification
