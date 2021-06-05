@@ -160,7 +160,7 @@ def get_decoder(encoded):
     ini_rows = img_rows//16
     ini_cols = img_columns//16
     dense = Dense(units=ini_rows*ini_cols*constants.domain, activation='relu', input_shape=(64, ))(encoded)
-    reshape = Reshape((1, 1, constants.domain))(dense)
+    reshape = Reshape((ini_rows, ini_cols, constants.domain))(dense)
     trans_1 = Conv2DTranspose(constants.domain//2, kernel_size=3, strides=2,
         padding='same', activation='relu')(reshape)
     drop_1 = Dropout(0.4)(trans_1)
@@ -173,11 +173,11 @@ def get_decoder(encoded):
     trans_4 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_3)
     drop_4 = Dropout(0.4)(trans_4)
-    trans_5 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
-        padding='same', activation='relu')(drop_4)
-    drop_5 = Dropout(0.4)(trans_5)
+    # trans_5 = Conv2DTranspose(constants.domain//16, kernel_size=3, strides=2,
+    #     padding='same', activation='relu')(drop_4)
+    # drop_5 = Dropout(0.4)(trans_5)
     output_img = Conv2D(img_colors, kernel_size=3, strides=1,
-        activation='sigmoid', padding='same', name='autoencoder')(drop_5)
+        activation='sigmoid', padding='same', name='autoencoder')(drop_4)
 
     # Produces an image of same size and channels as originals.
     return output_img
