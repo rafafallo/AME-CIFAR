@@ -179,8 +179,9 @@ def get_decoder(encoded):
     ini_cols = img_columns//16
     dense = Dense(units=ini_rows*ini_cols*constants.domain//2, activation='relu')(encoded)
     reshape = Reshape((ini_rows, ini_cols, constants.domain//2))(dense)
+    drop_0 = Dropout(0.4)(reshape)
     trans_1 = Conv2DTranspose(constants.domain//4, kernel_size=3, strides=2,
-        padding='same', activation='relu')(reshape)
+        padding='same', activation='relu')(drop_0)
     drop_1 = Dropout(0.4)(trans_1)
     trans_2 = Conv2DTranspose(constants.domain//8, kernel_size=3, strides=2,
         padding='same', activation='relu')(drop_1)
