@@ -20,7 +20,7 @@ from tensorflow.keras import Model
 from tensorflow.keras.layers import Input, Conv2D, AveragePooling2D, Dropout, Flatten, Dense, \
     LayerNormalization, Reshape, Conv2DTranspose
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.regularizers import l2
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from joblib import Parallel, delayed
 import png
 
@@ -106,7 +106,7 @@ def add_noise(data, experiment, occlusion = 0, bars_type = None):
 
 def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
 
-   # Load MNIST data, as part of TensorFlow.
+    # Load CIFAR data, as part of TensorFlow.
     cifar = tf.keras.datasets.cifar10
     (train_images, train_labels), (test_images, test_labels) = cifar.load_data()
 
@@ -115,14 +115,32 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
 
     all_data = add_noise(all_data, experiment, occlusion, bars_type)
 
-    all_data = all_data.reshape((len(all_data), img_columns, img_rows, img_colors))
+    # all_data = all_data.reshape((len(all_data), img_columns, img_rows, img_colors))
     all_data = all_data.astype('float32') / 255
-
 
     if one_hot:
         # Changes labels to binary rows. Each label correspond to a column, and only
         # the column for the corresponding label is set to one.
         all_labels = to_categorical(all_labels)
+
+    return (all_data, all_labels)
+
+
+def expand_data(data, labels):
+    # Create data generator
+    transforms = {'tx': 0.1, 'ty': 0.1, 'flip_horizontal': True}
+    datagen = ImageDataGenerator()
+    new_data = []
+    new_labels = []
+    for d, l in zip(data,labels):
+        e = datagen.apply_transform(d, transforms)
+        new_data.append(e)
+        new_labels.append(l)
+    
+    new_data = np.array(new_data)
+    new_labels = np.array(new_labels)
+    all_data = np.concatenate((data,new_data), axis=0)
+    all_labels = np.concatenate((labels, new_labels), axis=0)
 
     return (all_data, all_labels)
 
@@ -222,6 +240,8 @@ def train_networks(training_percentage, filename, experiment):
         validation_labels = training_labels[truly_training:]
         training_data = training_data[:truly_training]
         training_labels = training_labels[:truly_training]
+
+        training_data, training_labels = expand_data(training_data, training_labels)
         
         input_img = Input(shape=(img_columns, img_rows, img_colors))
         encoded = get_encoder(input_img)
@@ -229,11 +249,9 @@ def train_networks(training_percentage, filename, experiment):
         decoded = get_decoder(encoded)
 
         model = Model(inputs=input_img, outputs=[classified, decoded])
-
         model.compile(loss=['categorical_crossentropy', 'binary_crossentropy'],
                     optimizer='adam',
                     metrics='accuracy')
-
         model.summary()
 
         history = model.fit(training_data,
