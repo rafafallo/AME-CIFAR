@@ -27,8 +27,10 @@ A_ACCURACY = 'autoencoder_accuracy'
 VAL = 'val_'
 
 
+def trplot(a_measure, b_measure, a_label, b_label, max_epoch, nn):
+    epoch = len(a_measure)
+    epoch = max_epoch if epoch > max_epoch else epoch
 
-def trplot(a_measure, b_measure, a_label, b_label, epoch, nn):
     fig = plt.figure()
     x = np.arange(0,epoch)
     plt.errorbar(x, a_measure[:epoch], fmt='b-.', label=a_label)
@@ -42,60 +44,28 @@ def trplot(a_measure, b_measure, a_label, b_label, epoch, nn):
 def teplot(a_measure, b_measure, a_label, b_label):
     fig = plt.figure()
     x = np.arange(0,len(a_measure))
-    plt.errorbar(x, a_measure[:epoch], fmt='b-.', label=a_label)
-    plt.errorbar(x, b_measure[:epoch], fmt='r--,', label=b_label)
+    plt.errorbar(x, a_measure, fmt='b-.', label=a_label)
+    plt.errorbar(x, b_measure, fmt='r--,', label=b_label)
     plt.legend(loc=0)
 
     plt.suptitle(f'Average results')
     plt.show()
-    
 
 
-def compare_loss(bigger_loss, smaller_loss, epoch):
-    if (len(bigger_loss) < epoch) or (len(smaller_loss) < epoch):
-        print('Sequences are sorter')
-        sys.exit(1)
-    holds = 0.0
-    for i in range(epoch):
-        if bigger_loss[i] < smaller_loss[i]:
-            holds += 1.0
-    return holds/float(epoch)
-
-
-def compare_accuracy(smaller_acc, bigger_acc, epoch):
-    if (len(smaller_acc) < epoch) or (len(bigger_acc) < epoch):
-        print('Sequences are sorter')
-        sys.exit(1)
-    holds = 0.0
-    for i in range(epoch):
-        if smaller_acc[i] > bigger_acc[i]:
-            holds += 1.0 
-    return holds/float(epoch)
-
-
-def training_stats(data, epoch):
+def training_stats(data, max_epoch):
     """ Analyse neural nets training data. 
         
         Training stats data is a list of dictionaries with the full
         set of keys declared above.
     """
-
-    a = {LOSS: [], C_LOSS: [], A_LOSS: [], C_ACCURACY: [], A_ACCURACY: []}
-
     n = 0
     for d in data:
-        a[LOSS].append(compare_loss(d[LOSS], d[VAL+LOSS], epoch))
-        trplot(d[LOSS], d[VAL+LOSS], LOSS, VAL+LOSS,epoch,n)
-        a[C_LOSS].append(compare_loss(d[C_LOSS], d[VAL+C_LOSS], epoch))
-        trplot(d[C_LOSS], d[VAL+C_LOSS], C_LOSS, VAL+C_LOSS,epoch,n)
-        a[A_LOSS].append(compare_loss(d[A_LOSS], d[VAL+A_LOSS], epoch))
-        trplot(d[A_LOSS], d[VAL+A_LOSS], A_LOSS, VAL+A_LOSS,epoch,n)
-        a[C_ACCURACY].append(compare_accuracy(d[C_ACCURACY], d[VAL+C_ACCURACY], epoch))
-        trplot(d[C_ACCURACY], d[VAL+C_ACCURACY], C_ACCURACY, VAL+C_ACCURACY,epoch,n)
-        a[A_ACCURACY].append(compare_accuracy(d[A_ACCURACY], d[VAL+A_ACCURACY], epoch))
-        trplot(d[A_ACCURACY], d[VAL+A_ACCURACY], A_ACCURACY, VAL+A_ACCURACY,epoch,n)
+        trplot(d[LOSS], d[VAL+LOSS], LOSS, VAL+LOSS,max_epoch,n)
+        trplot(d[C_LOSS], d[VAL+C_LOSS], C_LOSS, VAL+C_LOSS,max_epoch,n)
+        trplot(d[A_LOSS], d[VAL+A_LOSS], A_LOSS, VAL+A_LOSS,max_epoch,n)
+        trplot(d[C_ACCURACY], d[VAL+C_ACCURACY], C_ACCURACY, VAL+C_ACCURACY,max_epoch,n)
+        trplot(d[A_ACCURACY], d[VAL+A_ACCURACY], A_ACCURACY, VAL+A_ACCURACY,max_epoch,n)
         n += 1
-    return a
 
 
 def testing_stats(data):
@@ -119,7 +89,6 @@ def testing_stats(data):
     teplot(m[C_LOSS],m[A_LOSS],C_LOSS,A_LOSS)
     teplot(m[C_ACCURACY],m[A_ACCURACY],C_ACCURACY,A_ACCURACY)
 
-    return m
 
 if __name__== "__main__" :
     if len(sys.argv) != 3:
@@ -127,7 +96,7 @@ if __name__== "__main__" :
         sys.exit(1)
 
     fname = sys.argv[1]
-    epoch = int(sys.argv[2])
+    max_epoch = int(sys.argv[2])
     
     history = {}
     with open(fname) as json_file:
@@ -149,6 +118,5 @@ if __name__== "__main__" :
             testing.append(s)
         odd = not odd
 
-    tes = testing_stats(testing)
-    print(tes)
-    trs = training_stats(training, epoch)
+    testing_stats(testing)
+    training_stats(training, max_epoch)
