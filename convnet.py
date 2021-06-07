@@ -155,9 +155,9 @@ def vgg_block(parameters, input_layer, dropout=0.4, first = False):
     else:
         conv_1 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
             padding='same')(input_layer)
-    conv_2 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
-        padding='same')(conv_1)
-    pool_1 = AveragePooling2D((2, 2))(conv_2)
+    # conv_2 = Conv2D(parameters,kernel_size=3, activation='relu', kernel_initializer='he_uniform', 
+    #    padding='same')(conv_1)
+    pool_1 = AveragePooling2D((2, 2))(conv_1)
     drop_1 = Dropout(dropout)(pool_1)
     return drop_1
 
@@ -279,14 +279,13 @@ def train_networks(training_percentage, filename, experiment):
             testing_data = data[j:i]
             testing_labels = labels[j:i]
 
+        training_data, training_labels = expand_data(training_data, training_labels)
         truly_training = int(training_size*truly_training_percentage)
 
         validation_data = training_data[truly_training:]
         validation_labels = training_labels[truly_training:]
         training_data = training_data[:truly_training]
         training_labels = training_labels[:truly_training]
-
-        training_data, training_labels = expand_data(training_data, training_labels)
         
         input_img = Input(shape=(img_columns, img_rows, img_colors))
         encoded = get_encoder(input_img)
