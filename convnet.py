@@ -115,6 +115,8 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     all_data = np.concatenate((train_images, test_images), axis=0)
     all_labels = np.concatenate((train_labels, test_labels), axis= 0)
 
+    # All labels are shaped (N, 1), so reduce it to (N, )
+    all_labels = np.squeeze(all_labels)
     all_data = add_noise(all_data, experiment, occlusion, bars_type)
 
     # all_data = all_data.reshape((len(all_data), img_columns, img_rows, img_colors))
