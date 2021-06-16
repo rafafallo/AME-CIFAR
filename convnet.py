@@ -324,12 +324,12 @@ def store_images(original, produced, directory, stage, idx, label):
     original_filename = constants.original_image_filename(directory, stage, idx, label)
     produced_filename = constants.produced_image_filename(directory, stage, idx, label)
 
-    pixels = original.reshape(28,28) * 255
+    pixels = original.reshape(img_rows,img_columns*img_colors) * 255
     pixels = pixels.round().astype(np.uint8)
-    png.from_array(pixels, 'L;8').save(original_filename)
-    pixels = produced.reshape(28,28) * 255
+    png.from_array(pixels, 'RGB;8').save(original_filename)
+    pixels = produced.reshape(img_rows,img_columns*img_colors) * 255
     pixels = pixels.round().astype(np.uint8)
-    png.from_array(pixels, 'L;8').save(produced_filename)
+    png.from_array(pixels, 'RGB;8').save(produced_filename)
 
 
 def store_memories(labels, produced, features, directory, stage, msize):
@@ -337,11 +337,11 @@ def store_memories(labels, produced, features, directory, stage, msize):
     produced_filename = constants.produced_memory_filename(directory, msize, stage, idx, label)
 
     if np.isnan(np.sum(features)):
-        pixels = np.full((28,28), 255)
+        pixels = np.full((img_rows,img_columns*img_colors), 255)
     else:
-        pixels = produced.reshape(28,28) * 255
+        pixels = produced.reshape(img_rows,img_columns*img_colors) * 255
     pixels = pixels.round().astype(np.uint8)
-    png.from_array(pixels, 'L;8').save(produced_filename)
+    png.from_array(pixels, 'RGB;8').save(produced_filename)
 
 
 def obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
@@ -477,7 +477,7 @@ def remember(experiment, occlusion = None, bars_type = None, tolerance = 0):
         decoder = Model(inputs=input_mem, outputs=decoded)
         decoder.summary()
 
-        for dlayer, alayer in zip(decoder.layers[1:], autoencoder.layers[11:]):
+        for dlayer, alayer in zip(decoder.layers[1:], autoencoder.layers[17:]):
             dlayer.set_weights(alayer.get_weights())
 
         produced_images = decoder.predict(testing_features)
